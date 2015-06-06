@@ -21,29 +21,31 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     }
     
     class Injury {
-        var x: CGFloat = 0.0
-        var y: CGFloat = 0.0
+        var coordinates: NormalizedPosition = NormalizedPosition()
     }
     
     @IBOutlet var scroll: UIScrollView!
     @IBOutlet weak var image: UIImageView!
     @IBOutlet var longPressRecognizer: UILongPressGestureRecognizer!
 
+    var injuries: NSMutableArray = NSMutableArray()
+    
     func addMarker(x: CGFloat, y: CGFloat){
-        let testFrame : CGRect = CGRectMake(x-25,y-25,50,50)
+        let testFrame : CGRect = CGRectMake(x-(25/self.scroll.zoomScale),y-(25/self.scroll.zoomScale),50.0/self.scroll.zoomScale,50/self.scroll.zoomScale)
         var testView : UIView = UIView(frame: testFrame)
-        testView.backgroundColor = UIColor(red: 0.1, green: 0.2, blue: 0.2, alpha: 1.0)
+        testView.backgroundColor = UIColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
         testView.alpha=0.8
-        self.view.addSubview(testView)
+        self.image.addSubview(testView)
     }
     
     func addInjuryMarkers() {
+        for injury in self.injuries {
+            var denormXY = self.denormalizePosition((injury as! Injury).coordinates.x, y: (injury as! Injury).coordinates.y)
+            self.addMarker(denormXY.x, y: denormXY.y)
+        }
         //Method to add all the markers, based on current scale and scroll
     }
     
-    func clearSubviews() {
-        //remove all the markers in order to redraw them
-    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -60,8 +62,7 @@ class ViewController: UIViewController, UIScrollViewDelegate {
         var imageView = UIImageView(frame: CGRectMake(0,0,self.view.frame.width,20))
         let screenImage = getImageWithColor(UIColor.clearColor(), size: CGSize(width: 100, height: 100))
         imageView.image = screenImage
-        self.view.addSubview(imageView)
-        self.addMarker(100, y:100)
+        self.image.addSubview(imageView)
     }
 
     override func didReceiveMemoryWarning() {
@@ -83,26 +84,27 @@ class ViewController: UIViewController, UIScrollViewDelegate {
         if (sender.state == UIGestureRecognizerState.Began){
             let x = sender.locationInView(self.view).x / self.scroll.zoomScale
             let y = sender.locationInView(self.view).y / self.scroll.zoomScale
-            self.addInjury(sender.locationInView(self.view).x,y: sender.locationInView(self.view).y)
-            self.addMarker(x, y:y)
+            var w = sender.locationInView(self.image).x
+            var h = sender.locationInView(self.image).y
+            self.addInjury(sender.locationInView(self.view).x,y: sender.locationInView(self.view).y, imageX: w, imageY: h)
         }
     }
     
     func denormalizePosition(x: CGFloat, y:CGFloat) -> DenormalizedPosition {
         var denormPos = DenormalizedPosition()
-        denormPos.x = x * self.scroll.zoomScale
-        denormPos.y = y * self.scroll.zoomScale
+        denormPos.x = x * self.image.frame.width / self.scroll.zoomScale
+        denormPos.y = y * self.image.frame.height / self.scroll.zoomScale
         return denormPos
     }
     
     func getNormalizedPosition(x: CGFloat, y:CGFloat) -> NormalizedPosition{
         var normPos = NormalizedPosition()
-        normPos.x = x / self.image.frame.width
-        normPos.y = y / self.image.frame.height
+        normPos.x = self.scroll.zoomScale * x / self.image.frame.width
+        normPos.y = self.scroll.zoomScale * y / self.image.frame.height
         return normPos
     }
     
-    func addInjury(x: CGFloat, y: CGFloat) {
+    func addInjury(x: CGFloat, y: CGFloat, imageX: CGFloat, imageY: CGFloat) {
         var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! UIViewController
         var nav = UINavigationController(rootViewController: popoverContent)
         nav.modalPresentationStyle = UIModalPresentationStyle.Popover
@@ -112,10 +114,41 @@ class ViewController: UIViewController, UIScrollViewDelegate {
         popover!.sourceView = self.view
         popover!.sourceRect = CGRectMake(x,y,0,0)
         self.presentViewController(nav, animated: true, completion: nil)
-        
+        var normXY = self.getNormalizedPosition(imageX, y: imageY)
+        var injury = Injury()
+        injury.coordinates = normXY
+        injuries.addObject(injury)
+        var denormXY = self.denormalizePosition(injury.coordinates.x, y: injury.coordinates.y)
+        self.addMarker(denormXY.x, y: denormXY.y)
     }
     
     
+    func removeInjuryMarkers() {
+        for view in self.image.subviews {
+            print("h: \(view.frame.height) w: \(view.frame.width)")
+            view.removeFromSuperview()
+        }
+    }
+    
+    func scrollViewWillBeginDragging(scrollView: UIScrollView){
+        self.removeInjuryMarkers()
+    }
+    
+    func scrollViewDidScroll(scrollView: UIScrollView) {
+        if self.image.subviews.count == 0 {
+            self.addInjuryMarkers()
+        }
+    }
+    
+    func scrollViewWillBeginZooming(scrollView: UIScrollView, withView view: UIView!){
+        self.removeInjuryMarkers()
+    }
+    
+    func scrollViewDidZoom(scrollView: UIScrollView) {
+        if self.image.subviews.count == 0 {
+            self.addInjuryMarkers()
+        }
+    }
     
     func viewForZoomingInScrollView(scrollView: UIScrollView) -> UIView?
     {
