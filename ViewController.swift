@@ -31,11 +31,10 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     var injuries: NSMutableArray = NSMutableArray()
     
     func addMarker(x: CGFloat, y: CGFloat){
-        let testFrame : CGRect = CGRectMake(x-(25/self.scroll.zoomScale),y-(25/self.scroll.zoomScale),50.0/self.scroll.zoomScale,50/self.scroll.zoomScale)
-        var testView : UIView = UIView(frame: testFrame)
-        testView.backgroundColor = UIColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
-        testView.alpha=0.8
-        self.image.addSubview(testView)
+        var offset = self.scroll.contentOffset
+        let testFrame : CGRect = CGRectMake(x-25,y-25,50.0,50.0)
+        var iconView : IconView = IconView(frame: testFrame, number:1, scale:self.scroll.zoomScale)
+        self.view.addSubview(iconView)
     }
     
     func addInjuryMarkers() {
@@ -92,8 +91,15 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     
     func denormalizePosition(x: CGFloat, y:CGFloat) -> DenormalizedPosition {
         var denormPos = DenormalizedPosition()
-        denormPos.x = x * self.image.frame.width / self.scroll.zoomScale
-        denormPos.y = y * self.image.frame.height / self.scroll.zoomScale
+        var imageFrame : CGRect = self.image.frame
+        var viewFrame : CGRect = self.view.frame
+        var imageX : CGFloat = (self.image.image! as UIImage).size.width
+        var imageY : CGFloat = (self.image.image! as UIImage).size.height
+        var ratioX : CGFloat = imageX/self.view.frame.width
+        var ratioY : CGFloat = imageY/self.view.frame.height
+        var visibleRect: CGRect = self.scroll.convertRect(self.scroll.bounds, toView: self.image)
+        denormPos.x = (x * self.image.frame.width / self.scroll.zoomScale - visibleRect.origin.x) * self.scroll.zoomScale //* ratioX
+        denormPos.y = (y * self.image.frame.height / self.scroll.zoomScale - visibleRect.origin.y) * self.scroll.zoomScale //* ratioY
         return denormPos
     }
     
@@ -124,9 +130,11 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     
     
     func removeInjuryMarkers() {
-        for view in self.image.subviews {
-            print("h: \(view.frame.height) w: \(view.frame.width)")
-            view.removeFromSuperview()
+        for view in self.view.subviews {
+            if view is IconView {
+                print("h: \(view.frame.height) w: \(view.frame.width)")
+                view.removeFromSuperview()
+            }
         }
     }
     
@@ -134,20 +142,19 @@ class ViewController: UIViewController, UIScrollViewDelegate {
         self.removeInjuryMarkers()
     }
     
-    func scrollViewDidScroll(scrollView: UIScrollView) {
-        if self.image.subviews.count == 0 {
+    func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool){
             self.addInjuryMarkers()
-        }
     }
     
     func scrollViewWillBeginZooming(scrollView: UIScrollView, withView view: UIView!){
         self.removeInjuryMarkers()
     }
     
-    func scrollViewDidZoom(scrollView: UIScrollView) {
-        if self.image.subviews.count == 0 {
+    
+    func scrollViewDidEndZooming(scrollView: UIScrollView, withView view: UIView!, atScale scale: CGFloat) {
+        
             self.addInjuryMarkers()
-        }
+        
     }
     
     func viewForZoomingInScrollView(scrollView: UIScrollView) -> UIView?
