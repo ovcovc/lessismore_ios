@@ -8,23 +8,28 @@
 
 import UIKit
 
+protocol IconViewDelegate {
+    func didPressIcon()
+}
+
 @IBDesignable class IconView : UIView {
     
     @IBOutlet weak var back: UIImageView!
-    @IBOutlet weak var button: UIButton!
-    @IBOutlet weak var number: UILabel!
     var view: UIView!
+    var delegate : IconViewDelegate? = nil
+    @IBOutlet weak var number: UILabel!
+    @IBOutlet weak var button: UIButton!
     
     override init(frame : CGRect){
         super.init(frame: frame)
         self.xibSetup()
     }
 
-    init(frame: CGRect, number: Int, scale: CGFloat){
+    init(frame: CGRect, number: Int){
         super.init(frame: frame)
         self.xibSetup()
-        //self.number.text = "\(number)"
-        self.layer.cornerRadius = 8.0/scale
+        self.number.text = "\(number)"
+        self.layer.cornerRadius = 8.0
         self.clipsToBounds = true
     }
     
@@ -33,7 +38,12 @@ import UIKit
     }
     
     @IBAction func buttonPressed(sender: AnyObject) {
+        self.delegate?.didPressIcon()
         print("chybaty")
+    }
+    
+    func setDelegate(delegate: IconViewDelegate) {
+        self.delegate = delegate
     }
     
     func xibSetup() {
@@ -50,11 +60,7 @@ import UIKit
     }
     
     func loadViewFromNib() -> UIView {
-        let bundle = NSBundle(forClass: self.dynamicType)
-        let nib = UINib(nibName: "IconView", bundle: bundle)
-        
-        // Assumes UIView is top level and only object in CustomView.xib file
-        let view = nib.instantiateWithOwner(self, options: nil)[0] as! UIView
+        let view:UIView = NSBundle.mainBundle().loadNibNamed("IconView", owner: self, options: nil).first as! UIView
         return view
     }
 }

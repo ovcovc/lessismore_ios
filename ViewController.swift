@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController, UIScrollViewDelegate {
+class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     
     class NormalizedPosition {
         var x: CGFloat = 0.0
@@ -29,22 +29,24 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     @IBOutlet var longPressRecognizer: UILongPressGestureRecognizer!
 
     var injuries: NSMutableArray = NSMutableArray()
+    var drawnMarkers : Int = 0
     
-    func addMarker(x: CGFloat, y: CGFloat){
+    func addMarker(x: CGFloat, y: CGFloat, number: Int){
         var offset = self.scroll.contentOffset
         let testFrame : CGRect = CGRectMake(x-25,y-25,50.0,50.0)
-        var iconView : IconView = IconView(frame: testFrame, number:1, scale:self.scroll.zoomScale)
+        var iconView : IconView = IconView(frame: testFrame, number:1)
+        iconView.setDelegate(self)
         self.view.addSubview(iconView)
+        self.drawnMarkers += 1
     }
     
     func addInjuryMarkers() {
         for injury in self.injuries {
             var denormXY = self.denormalizePosition((injury as! Injury).coordinates.x, y: (injury as! Injury).coordinates.y)
-            self.addMarker(denormXY.x, y: denormXY.y)
+            self.addMarker(denormXY.x, y: denormXY.y, number: 1)
         }
         //Method to add all the markers, based on current scale and scroll
     }
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -125,7 +127,7 @@ class ViewController: UIViewController, UIScrollViewDelegate {
         injury.coordinates = normXY
         injuries.addObject(injury)
         var denormXY = self.denormalizePosition(injury.coordinates.x, y: injury.coordinates.y)
-        self.addMarker(denormXY.x, y: denormXY.y)
+        self.addMarker(denormXY.x, y: denormXY.y, number: 1)
     }
     
     
@@ -136,25 +138,44 @@ class ViewController: UIViewController, UIScrollViewDelegate {
                 view.removeFromSuperview()
             }
         }
+        self.drawnMarkers = 0
+    }
+    
+    func redrawMarkers() {
+        self.removeInjuryMarkers()
+        if !self.scroll.decelerating {
+            self.addInjuryMarkers()
+        }
+    }
+    
+    //DELEGATES
+    
+    func didPressIcon() {
+        print("Bedziem skalować")
     }
     
     func scrollViewWillBeginDragging(scrollView: UIScrollView){
         self.removeInjuryMarkers()
     }
     
-    func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool){
-            self.addInjuryMarkers()
-    }
-    
     func scrollViewWillBeginZooming(scrollView: UIScrollView, withView view: UIView!){
         self.removeInjuryMarkers()
     }
     
+    func scrollViewWillBeginDecelerating(scrollView: UIScrollView) {
+        self.removeInjuryMarkers()
+    }
     
     func scrollViewDidEndZooming(scrollView: UIScrollView, withView view: UIView!, atScale scale: CGFloat) {
-        
-            self.addInjuryMarkers()
-        
+        self.redrawMarkers()
+    }
+    
+    func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+        self.redrawMarkers()
+    }
+    
+    func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        self.redrawMarkers()
     }
     
     func viewForZoomingInScrollView(scrollView: UIScrollView) -> UIView?
