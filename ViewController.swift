@@ -35,16 +35,6 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
         var coordinates: NormalizedPosition = NormalizedPosition()
     }
     
-    class Limb : Injury {
-        var quantity : Int = 0
-        var injuries : NSMutableArray = NSMutableArray()
-        
-        init(quantity: Int) {
-            super.init()
-            self.quantity = quantity
-        }
-    }
-    
     @IBOutlet var scroll: UIScrollView!
     @IBOutlet weak var image: UIImageView!
     @IBOutlet var longPressRecognizer: UILongPressGestureRecognizer!
@@ -52,18 +42,6 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     var injuries: NSMutableArray = NSMutableArray()
     var drawnMarkers : Int = 0
     
-    var limbs : NSMutableArray = NSMutableArray()
-    
-    func getLimbs() {
-        var head = Limb(quantity: 2)
-        head.coordinates = NormalizedPosition(x: 0.75, y: 0.18)
-        var injury1 = Injury()
-        injury1.coordinates = NormalizedPosition(x: 0.77, y: 0.19)
-        head.injuries.addObject(injury1)
-        var injury2 = Injury()
-        injury2.coordinates = NormalizedPosition(x: 0.74, y: 0.16)
-        head.injuries.addObject(injury2)
-    }
     
     func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int) -> IconView {
         for view in self.view.subviews {
