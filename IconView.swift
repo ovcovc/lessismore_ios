@@ -9,7 +9,7 @@
 import UIKit
 
 protocol IconViewDelegate {
-    func didPressIcon()
+    func didPressIcon(icon: IconView)
 }
 
 @IBDesignable class IconView : UIView {
@@ -17,6 +17,8 @@ protocol IconViewDelegate {
     @IBOutlet weak var back: UIImageView!
     var view: UIView!
     var delegate : IconViewDelegate? = nil
+    var pxX : Int = 0
+    var pxY : Int = 0
     @IBOutlet weak var number: UILabel!
     @IBOutlet weak var button: UIButton!
     
@@ -25,9 +27,11 @@ protocol IconViewDelegate {
         self.xibSetup()
     }
 
-    init(frame: CGRect, number: Int){
+    init(frame: CGRect, number: Int, pxx: Int, pxy: Int){
         super.init(frame: frame)
         self.xibSetup()
+        self.pxX = pxx
+        self.pxY = pxy
         self.number.text = "\(number)"
         self.layer.cornerRadius = 8.0
         self.clipsToBounds = true
@@ -38,8 +42,7 @@ protocol IconViewDelegate {
     }
     
     @IBAction func buttonPressed(sender: AnyObject) {
-        self.delegate?.didPressIcon()
-        print("chybaty")
+        self.delegate?.didPressIcon(self)
     }
     
     func setDelegate(delegate: IconViewDelegate) {

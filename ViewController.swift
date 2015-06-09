@@ -10,9 +10,20 @@ import UIKit
 
 class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     
+    let MAX_ZOOM_FACTOR : CGFloat = 7.0
+    
     class NormalizedPosition {
         var x: CGFloat = 0.0
         var y: CGFloat = 0.0
+        
+        init(){
+        
+        }
+        
+        init(x: CGFloat, y: CGFloat){
+            self.x = x
+            self.y = y
+        }
     }
     
     class DenormalizedPosition {
@@ -24,6 +35,16 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
         var coordinates: NormalizedPosition = NormalizedPosition()
     }
     
+    class Limb : Injury {
+        var quantity : Int = 0
+        var injuries : NSMutableArray = NSMutableArray()
+        
+        init(quantity: Int) {
+            super.init()
+            self.quantity = quantity
+        }
+    }
+    
     @IBOutlet var scroll: UIScrollView!
     @IBOutlet weak var image: UIImageView!
     @IBOutlet var longPressRecognizer: UILongPressGestureRecognizer!
@@ -31,19 +52,55 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     var injuries: NSMutableArray = NSMutableArray()
     var drawnMarkers : Int = 0
     
-    func addMarker(x: CGFloat, y: CGFloat, number: Int){
+    var limbs : NSMutableArray = NSMutableArray()
+    
+    func getLimbs() {
+        var head = Limb(quantity: 2)
+        head.coordinates = NormalizedPosition(x: 0.75, y: 0.18)
+        var injury1 = Injury()
+        injury1.coordinates = NormalizedPosition(x: 0.77, y: 0.19)
+        head.injuries.addObject(injury1)
+        var injury2 = Injury()
+        injury2.coordinates = NormalizedPosition(x: 0.74, y: 0.16)
+        head.injuries.addObject(injury2)
+    }
+    
+    func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int) -> IconView {
+        for view in self.view.subviews {
+            if view is IconView {
+                if CGRectIntersectsRect(view.frame, frame){
+                    var v = view as! IconView
+                    var num : Int = v.number.text!.toInt()!
+                    num += 1
+                    v.number.text = "\(num)"
+                    return v
+                }
+            }
+        }
+        var icon : IconView = IconView(frame: frame, number: number, pxx: pxx, pxy: pxy)
+        self.view.addSubview(icon)
+        return icon
+    }
+    
+    func addMarker(x: CGFloat, y: CGFloat, number: Int, pxx: Int, pxy: Int){
         var offset = self.scroll.contentOffset
         let testFrame : CGRect = CGRectMake(x-25,y-25,50.0,50.0)
-        var iconView : IconView = IconView(frame: testFrame, number:1)
+        var iconView : IconView = self.getOverlappingIconOrCreate(testFrame, number: number, pxx: pxx, pxy: pxy)
         iconView.setDelegate(self)
-        self.view.addSubview(iconView)
+        iconView.setNeedsDisplay()
         self.drawnMarkers += 1
     }
     
     func addInjuryMarkers() {
         for injury in self.injuries {
-            var denormXY = self.denormalizePosition((injury as! Injury).coordinates.x, y: (injury as! Injury).coordinates.y)
-            self.addMarker(denormXY.x, y: denormXY.y, number: 1)
+            var x = (injury as! Injury).coordinates.x
+            var y = (injury as! Injury).coordinates.y
+            var denormXY = self.denormalizePosition(x, y: y)
+            var bounds = self.view.bounds
+            var fr = self.view.frame
+            var pxx = Int(x * self.view.frame.width)
+            var pxy = Int(y * self.view.frame.height)
+            self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy )
         }
         //Method to add all the markers, based on current scale and scroll
     }
@@ -51,7 +108,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.whiteColor()
-        scroll.maximumZoomScale=5;
+        scroll.maximumZoomScale = MAX_ZOOM_FACTOR;
         scroll.minimumZoomScale=1;
         scroll.bounces=true;
         scroll.bouncesZoom=true;
@@ -127,7 +184,9 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
         injury.coordinates = normXY
         injuries.addObject(injury)
         var denormXY = self.denormalizePosition(injury.coordinates.x, y: injury.coordinates.y)
-        self.addMarker(denormXY.x, y: denormXY.y, number: 1)
+        var pxx = Int(injury.coordinates.x * self.view.frame.width)
+        var pxy = Int(injury.coordinates.y * self.view.frame.height)
+        self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy)
     }
     
     
@@ -148,10 +207,28 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
         }
     }
     
+    func zoomToInjury(injuryIcon: IconView) {
+        var frame : CGRect = injuryIcon.frame
+        var scale = self.scroll.zoomScale
+        var offsetX = self.scroll.contentOffset.x / scale
+        var offsetY = (self.scroll.contentOffset.y + 64.0) / scale
+        var originX = frame.origin.x / scale
+        var originY = frame.origin.y / scale
+        var height = self.image.frame.height / MAX_ZOOM_FACTOR / scale
+        var width = self.image.frame.width / MAX_ZOOM_FACTOR / scale
+        var frameToZoom : CGRect = CGRectMake(offsetX + originX - 0.5 * width, offsetY + originY - 0.5 * height, width, height)
+        var newFrame : CGRect = CGRectMake(CGFloat(injuryIcon.pxX) - 0.5 * width, CGFloat(injuryIcon.pxY) - 0.5 * height, width, height)
+        self.scroll.zoomToRect(newFrame, animated: true)
+        self.redrawMarkers()
+    }
+    
     //DELEGATES
     
-    func didPressIcon() {
-        print("Bedziem skalować")
+    func didPressIcon(icon: IconView) {
+        var scale = self.scroll.zoomScale + 0.5
+        if scale < MAX_ZOOM_FACTOR {
+            self.zoomToInjury(icon)
+        }
     }
     
     func scrollViewWillBeginDragging(scrollView: UIScrollView){
@@ -168,6 +245,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     
     func scrollViewDidEndZooming(scrollView: UIScrollView, withView view: UIView!, atScale scale: CGFloat) {
         self.redrawMarkers()
+        print(self.scroll.contentOffset)
     }
     
     func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
