@@ -14,11 +14,13 @@ protocol IconViewDelegate {
 
 @IBDesignable class IconView : UIView {
     
+
     @IBOutlet weak var back: UIImageView!
     var view: UIView!
     var delegate : IconViewDelegate? = nil
     var pxX : Int = 0
     var pxY : Int = 0
+    var injuries : NSMutableArray = NSMutableArray ()
     @IBOutlet weak var number: UILabel!
     @IBOutlet weak var button: UIButton!
     
@@ -27,14 +29,22 @@ protocol IconViewDelegate {
         self.xibSetup()
     }
 
-    init(frame: CGRect, number: Int, pxx: Int, pxy: Int){
+    init(frame: CGRect, number: Int, pxx: Int, pxy: Int, injury: Injury){
         super.init(frame: frame)
         self.xibSetup()
         self.pxX = pxx
         self.pxY = pxy
+        self.injuries.addObject(injury)
+        if number == 1 {
+            self.number.hidden = true
+        } else {
+            self.number.hidden = false
+        }
         self.number.text = "\(number)"
         self.layer.cornerRadius = 8.0
         self.clipsToBounds = true
+        self.backgroundColor = UIColor.clearColor()
+        
     }
     
     required init(coder aDecoder: NSCoder) {

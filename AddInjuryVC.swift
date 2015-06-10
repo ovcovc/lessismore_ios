@@ -8,6 +8,10 @@
 
 import UIKit
 
+protocol AddInjuryDelegate {
+    func didAddNewInjury()
+}
+
 class AddInjuryVC: UIViewController {
     
     

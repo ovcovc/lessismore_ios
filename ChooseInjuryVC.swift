@@ -7,9 +7,16 @@
 //
 import UIKit
 
-class PopoverVC: UITableViewController {
+protocol ChooseInjuryDelegate {
     
-    let options = ["Add new injury", "Report abuse", "Dismiss"]
+    func didChooseInjuryToShow(injury: Injury)
+    
+}
+
+class ChooseInjuryVC: UITableViewController {
+    
+    var injuries: NSMutableArray = NSMutableArray ()
+    var delegate : ChooseInjuryDelegate? = nil
     
     override func viewDidLoad(){
         super.viewDidLoad()
@@ -20,27 +27,22 @@ class PopoverVC: UITableViewController {
     }
     
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return options.count
+        return self.injuries.count
     }
     
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier("cell", forIndexPath: indexPath) as! UITableViewCell
+        let cell = tableView.dequeueReusableCellWithIdentifier("injuryCell", forIndexPath: indexPath) as! UITableViewCell
         
         let row = indexPath.row
-        cell.textLabel?.text = options[row]
+        cell.textLabel?.text = (injuries[row] as! Injury).name
         
         return cell
     }
     
     override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
         tableView.deselectRowAtIndexPath(indexPath, animated: true)
-        
-        let row = indexPath.row
-        if (row == 0) {
-            self.performSegueWithIdentifier("addInjury", sender: self)
-        }
-        else if (row == 2) {
-            self.dismissViewControllerAnimated(true, completion: {});
-        }
+        self.dismissViewControllerAnimated(true, completion: { () -> Void in
+            self.delegate!.didChooseInjuryToShow(self.injuries[indexPath.row] as! Injury)
+        })
     }
 }

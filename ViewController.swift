@@ -8,32 +8,9 @@
 
 import UIKit
 
-class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
+class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, ChooseInjuryDelegate {
     
     let MAX_ZOOM_FACTOR : CGFloat = 7.0
-    
-    class NormalizedPosition {
-        var x: CGFloat = 0.0
-        var y: CGFloat = 0.0
-        
-        init(){
-        
-        }
-        
-        init(x: CGFloat, y: CGFloat){
-            self.x = x
-            self.y = y
-        }
-    }
-    
-    class DenormalizedPosition {
-        var x: CGFloat = 0.0
-        var y: CGFloat = 0.0
-    }
-    
-    class Injury {
-        var coordinates: NormalizedPosition = NormalizedPosition()
-    }
     
     @IBOutlet var scroll: UIScrollView!
     @IBOutlet weak var image: UIImageView!
@@ -41,9 +18,10 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
 
     var injuries: NSMutableArray = NSMutableArray()
     var drawnMarkers : Int = 0
+    var selectedInjury : Injury = Injury()
     
     
-    func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int) -> IconView {
+    func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int, injury: Injury) -> IconView {
         for view in self.view.subviews {
             if view is IconView {
                 if CGRectIntersectsRect(view.frame, frame){
@@ -51,19 +29,28 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
                     var num : Int = v.number.text!.toInt()!
                     num += 1
                     v.number.text = "\(num)"
+                    /*
+                    //compute coordinates to place resulting view halfway between two points
+                    let halfwayX = (view.frame.origin.x + frame.origin.x) / 2
+                    let halfwayY = (view.frame.origin.y + frame.origin.y) / 2
+                    v.frame.origin.x = halfwayX
+                    v.frame.origin.y = halfwayY
+                    */
+                    v.injuries.addObject(injury)
+                    v.number.hidden = false
                     return v
                 }
             }
         }
-        var icon : IconView = IconView(frame: frame, number: number, pxx: pxx, pxy: pxy)
+        var icon : IconView = IconView(frame: frame, number: number, pxx: pxx, pxy: pxy, injury:injury)
         self.view.addSubview(icon)
         return icon
     }
     
-    func addMarker(x: CGFloat, y: CGFloat, number: Int, pxx: Int, pxy: Int){
+    func addMarker(x: CGFloat, y: CGFloat, number: Int, pxx: Int, pxy: Int, injury: Injury){
         var offset = self.scroll.contentOffset
         let testFrame : CGRect = CGRectMake(x-25,y-25,50.0,50.0)
-        var iconView : IconView = self.getOverlappingIconOrCreate(testFrame, number: number, pxx: pxx, pxy: pxy)
+        var iconView : IconView = self.getOverlappingIconOrCreate(testFrame, number: number, pxx: pxx, pxy: pxy, injury: injury)
         iconView.setDelegate(self)
         iconView.setNeedsDisplay()
         self.drawnMarkers += 1
@@ -78,7 +65,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
             var fr = self.view.frame
             var pxx = Int(x * self.view.frame.width)
             var pxy = Int(y * self.view.frame.height)
-            self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy )
+            self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy, injury: injury as! Injury)
         }
         //Method to add all the markers, based on current scale and scroll
     }
@@ -104,6 +91,14 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
+    }
+    
+    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        if segue.identifier == "showDetails" {
+            var tabBarVC = (segue.destinationViewController as! UITabBarController)
+            var detailsVC = tabBarVC.viewControllers?.first as! DetailsVC
+            detailsVC.injury = self.selectedInjury
+        }
     }
 
     func getImageWithColor(color: UIColor, size: CGSize) -> UIImage {
@@ -147,24 +142,41 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
         return normPos
     }
     
-    func addInjury(x: CGFloat, y: CGFloat, imageX: CGFloat, imageY: CGFloat) {
-        var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! UIViewController
+    func getModalPopover(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, popoverContent: UIViewController) -> UINavigationController {
         var nav = UINavigationController(rootViewController: popoverContent)
         nav.modalPresentationStyle = UIModalPresentationStyle.Popover
         var popover = nav.popoverPresentationController
-        popoverContent.preferredContentSize = CGSizeMake(150,150)
-        //popover.delegate = self
+        popoverContent.preferredContentSize = CGSizeMake(width,height)
         popover!.sourceView = self.view
         popover!.sourceRect = CGRectMake(x,y,0,0)
+        return nav
+    }
+    
+    func addContextualMenuPopover(x: CGFloat, y: CGFloat){
+        var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! UIViewController
+        let nav = self.getModalPopover(x, y: y, width: 150, height: 150, popoverContent: popoverContent) as UINavigationController
         self.presentViewController(nav, animated: true, completion: nil)
+    }
+    
+    func addInjuryNamesPopover(x: CGFloat, y: CGFloat, injuries: NSMutableArray) {
+        var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ChooseInjuryMenu") as! ChooseInjuryVC
+        popoverContent.injuries = injuries
+        popoverContent.delegate = self
+        let nav = self.getModalPopover(x, y: y, width: 250.0, height: CGFloat(44*injuries.count), popoverContent: popoverContent) as UINavigationController
+        self.presentViewController(nav, animated: true, completion: nil)
+    }
+    
+    func addInjury(x: CGFloat, y: CGFloat, imageX: CGFloat, imageY: CGFloat) {
+        self.addContextualMenuPopover(x, y: y)
         var normXY = self.getNormalizedPosition(imageX, y: imageY)
         var injury = Injury()
         injury.coordinates = normXY
+        injury.name = "kontuzja"
         injuries.addObject(injury)
         var denormXY = self.denormalizePosition(injury.coordinates.x, y: injury.coordinates.y)
         var pxx = Int(injury.coordinates.x * self.view.frame.width)
         var pxy = Int(injury.coordinates.y * self.view.frame.height)
-        self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy)
+        self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy, injury: injury)
     }
     
     
@@ -186,27 +198,32 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate {
     }
     
     func zoomToInjury(injuryIcon: IconView) {
-        var frame : CGRect = injuryIcon.frame
         var scale = self.scroll.zoomScale
-        var offsetX = self.scroll.contentOffset.x / scale
-        var offsetY = (self.scroll.contentOffset.y + 64.0) / scale
-        var originX = frame.origin.x / scale
-        var originY = frame.origin.y / scale
         var height = self.image.frame.height / MAX_ZOOM_FACTOR / scale
         var width = self.image.frame.width / MAX_ZOOM_FACTOR / scale
-        var frameToZoom : CGRect = CGRectMake(offsetX + originX - 0.5 * width, offsetY + originY - 0.5 * height, width, height)
         var newFrame : CGRect = CGRectMake(CGFloat(injuryIcon.pxX) - 0.5 * width, CGFloat(injuryIcon.pxY) - 0.5 * height, width, height)
         self.scroll.zoomToRect(newFrame, animated: true)
         self.redrawMarkers()
     }
     
-    //DELEGATES
+    //DELEGATE METHODS
     
     func didPressIcon(icon: IconView) {
-        var scale = self.scroll.zoomScale + 0.5
-        if scale < MAX_ZOOM_FACTOR {
+        //TODO refactor
+        if icon.number.text == "1" {
+            self.addInjuryNamesPopover(icon.frame.origin.x+icon.frame.width/2, y: icon.frame.origin.y+icon.frame.height/2, injuries: icon.injuries)
+            // show dropdown list of choices
+        } else if (self.scroll.zoomScale + 0.5) > 7 {
+            self.addInjuryNamesPopover(icon.frame.origin.x+icon.frame.width/2, y: icon.frame.origin.y+icon.frame.height/2, injuries: icon.injuries)
+            // show dropdown list of choices
+        } else {
             self.zoomToInjury(icon)
         }
+    }
+    
+    func didChooseInjuryToShow(injury: Injury) {
+        self.selectedInjury = injury
+        self.performSegueWithIdentifier("showDetails", sender: self)
     }
     
     func scrollViewWillBeginDragging(scrollView: UIScrollView){
