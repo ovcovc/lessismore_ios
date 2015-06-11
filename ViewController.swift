@@ -154,7 +154,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
     
     func addContextualMenuPopover(x: CGFloat, y: CGFloat){
         var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! UIViewController
-        let nav = self.getModalPopover(x, y: y, width: 150, height: 150, popoverContent: popoverContent) as UINavigationController
+        let nav = self.getModalPopover(x, y: y, width: 150, height: 132, popoverContent: popoverContent) as UINavigationController
         self.presentViewController(nav, animated: true, completion: nil)
     }
     
