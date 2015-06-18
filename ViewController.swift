@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, ChooseInjuryDelegate {
+class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, ChooseInjuryDelegate, NSURLConnectionDelegate {
     
     let MAX_ZOOM_FACTOR : CGFloat = 7.0
     
@@ -19,6 +19,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
     var injuries: NSMutableArray = NSMutableArray()
     var drawnMarkers : Int = 0
     var selectedInjury : Injury = Injury()
+    var data : NSMutableData = NSMutableData()
     
     
     func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int, injury: Injury) -> IconView {
@@ -86,6 +87,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
         let screenImage = getImageWithColor(UIColor.clearColor(), size: CGSize(width: 100, height: 100))
         imageView.image = screenImage
         self.image.addSubview(imageView)
+        self.startConnection()
     }
 
     override func didReceiveMemoryWarning() {
@@ -101,6 +103,39 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
         }
     }
 
+    //NSURL DELEGATE
+    func startConnection(){
+        let urlPath: String = "http://lit-wave-9027.herokuapp.com/injuries/"
+        var url: NSURL = NSURL(string: urlPath)!
+        var request: NSURLRequest = NSURLRequest(URL: url)
+        var connection: NSURLConnection = NSURLConnection(request: request, delegate: self, startImmediately: false)!
+        connection.start()
+    }
+    
+    func connection(didReceiveResponse: NSURLConnection, didReceiveResponse response: NSURLResponse) {
+        // Recieved a new request, clear out the data object
+        self.data = NSMutableData()
+    }
+    
+    func connection(connection: NSURLConnection!, didReceiveData data: NSData!){
+        self.data.appendData(data)
+    }
+    
+    func connectionDidFinishLoading(connection: NSURLConnection!) {
+        var err: NSError
+        var injuriesFromApi: NSMutableArray = NSJSONSerialization.JSONObjectWithData(self.data, options: NSJSONReadingOptions.MutableContainers, error: nil) as! NSMutableArray
+        self.injuries.removeAllObjects()
+        for inj in injuriesFromApi {
+            var injury = Injury(dict: (inj as! NSDictionary))
+            self.injuries.addObject(injury)
+        }
+        self.redrawMarkers()
+    }
+    
+    
+    //
+    
+    
     func getImageWithColor(color: UIColor, size: CGSize) -> UIImage {
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
         color.setFill()

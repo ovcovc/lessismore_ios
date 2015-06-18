@@ -405,6 +405,7 @@
                                                 <variation key="default">
                                                     <mask key="constraints">
                                                         <exclude reference="Ceh-F6-AK9"/>
+                                                        <exclude reference="bYY-o0-n80"/>
                                                     </mask>
                                                 </variation>
                                             </textView>
@@ -457,6 +458,14 @@
                     <tabBarItem key="tabBarItem" title="Item 1" id="o3r-5B-dh5"/>
                     <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
                     <size key="freeformSize" width="600" height="900"/>
+                    <connections>
+                        <outlet property="descText" destination="XnQ-9D-rcU" id="SBc-nN-CiY"/>
+                        <outlet property="exercises" destination="zi4-Q3-kyg" id="op5-zX-gBR"/>
+                        <outlet property="medication" destination="eUx-kG-TpY" id="Zd4-4P-da9"/>
+                        <outlet property="nameLabel" destination="tQp-SK-sb0" id="353-nD-1xR"/>
+                        <outlet property="recoveryLabel" destination="tyE-em-o1f" id="DoE-t9-Ka6"/>
+                        <outlet property="treatment" destination="c24-W6-pS2" id="cce-r6-GcC"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="gWo-wZ-GUR" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
