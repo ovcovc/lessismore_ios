@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, ChooseInjuryDelegate, NSURLConnectionDelegate {
+class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, ChooseInjuryDelegate, NSURLConnectionDelegate, ConnectionDelegate {
     
     let MAX_ZOOM_FACTOR : CGFloat = 7.0
     
@@ -20,7 +20,8 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
     var drawnMarkers : Int = 0
     var selectedInjury : Injury = Injury()
     var data : NSMutableData = NSMutableData()
-    
+    var delegate: AppDelegate? = nil
+
     
     func getOverlappingIconOrCreate(frame: CGRect, number: Int, pxx: Int, pxy: Int, injury: Injury) -> IconView {
         for view in self.view.subviews {
@@ -86,8 +87,9 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
         var imageView = UIImageView(frame: CGRectMake(0,0,self.view.frame.width,20))
         let screenImage = getImageWithColor(UIColor.clearColor(), size: CGSize(width: 100, height: 100))
         imageView.image = screenImage
+        self.delegate = UIApplication.sharedApplication().delegate as? AppDelegate
+        self.delegate?.connectionDelegate = self
         self.image.addSubview(imageView)
-        self.startConnection()
     }
 
     override func didReceiveMemoryWarning() {
@@ -102,39 +104,6 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
             detailsVC.injury = self.selectedInjury
         }
     }
-
-    //NSURL DELEGATE
-    func startConnection(){
-        let urlPath: String = "http://lit-wave-9027.herokuapp.com/injuries/"
-        var url: NSURL = NSURL(string: urlPath)!
-        var request: NSURLRequest = NSURLRequest(URL: url)
-        var connection: NSURLConnection = NSURLConnection(request: request, delegate: self, startImmediately: false)!
-        connection.start()
-    }
-    
-    func connection(didReceiveResponse: NSURLConnection, didReceiveResponse response: NSURLResponse) {
-        // Recieved a new request, clear out the data object
-        self.data = NSMutableData()
-    }
-    
-    func connection(connection: NSURLConnection!, didReceiveData data: NSData!){
-        self.data.appendData(data)
-    }
-    
-    func connectionDidFinishLoading(connection: NSURLConnection!) {
-        var err: NSError
-        var injuriesFromApi: NSMutableArray = NSJSONSerialization.JSONObjectWithData(self.data, options: NSJSONReadingOptions.MutableContainers, error: nil) as! NSMutableArray
-        self.injuries.removeAllObjects()
-        for inj in injuriesFromApi {
-            var injury = Injury(dict: (inj as! NSDictionary))
-            self.injuries.addObject(injury)
-        }
-        self.redrawMarkers()
-    }
-    
-    
-    //
-    
     
     func getImageWithColor(color: UIColor, size: CGSize) -> UIImage {
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
@@ -187,8 +156,9 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
         return nav
     }
     
-    func addContextualMenuPopover(x: CGFloat, y: CGFloat){
-        var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! UIViewController
+    func addContextualMenuPopover(x: CGFloat, y: CGFloat, position:NormalizedPosition){
+        var popoverContent = self.storyboard?.instantiateViewControllerWithIdentifier("ContextualMenu") as! PopoverVC
+        popoverContent.position = position
         let nav = self.getModalPopover(x, y: y, width: 150, height: 132, popoverContent: popoverContent) as UINavigationController
         self.presentViewController(nav, animated: true, completion: nil)
     }
@@ -202,8 +172,9 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
     }
     
     func addInjury(x: CGFloat, y: CGFloat, imageX: CGFloat, imageY: CGFloat) {
-        self.addContextualMenuPopover(x, y: y)
         var normXY = self.getNormalizedPosition(imageX, y: imageY)
+        self.addContextualMenuPopover(x, y: y, position:normXY)
+        /*
         var injury = Injury()
         injury.coordinates = normXY
         injury.name = "kontuzja"
@@ -212,6 +183,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
         var pxx = Int(injury.coordinates.x * self.view.frame.width)
         var pxy = Int(injury.coordinates.y * self.view.frame.height)
         self.addMarker(denormXY.x, y: denormXY.y, number: 1, pxx: pxx, pxy: pxy, injury: injury)
+        */
     }
     
     
@@ -242,6 +214,13 @@ class ViewController: UIViewController, UIScrollViewDelegate, IconViewDelegate, 
     }
     
     //DELEGATE METHODS
+    
+    func didUpdateInjuries() {
+        var array = self.delegate?.injuries
+        self.injuries = NSMutableArray(array: array!)
+        self.redrawMarkers()
+        println("injuries redrawn")
+    }
     
     func didPressIcon(icon: IconView) {
         //TODO refactor

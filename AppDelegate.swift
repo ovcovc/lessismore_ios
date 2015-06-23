@@ -9,15 +9,79 @@
 import UIKit
 import CoreData
 
+protocol ConnectionDelegate {
+    func didUpdateInjuries()
+}
+
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, NSURLConnectionDelegate {
 
     var window: UIWindow?
-
+    var injuries = [Injury]()
+    var data : NSMutableData = NSMutableData()
+    var connectionDelegate : ConnectionDelegate? = nil
+    var timer: NSTimer = NSTimer()
+    
+    func startConnection(){
+        let urlPath: String = "http://lit-wave-9027.herokuapp.com/injuries/"
+        var url: NSURL = NSURL(string: urlPath)!
+        var request: NSURLRequest = NSURLRequest(URL: url)
+        var connection: NSURLConnection = NSURLConnection(request: request, delegate: self, startImmediately: false)!
+        connection.start()
+    }
+    
+    func connection(didReceiveResponse: NSURLConnection, didReceiveResponse response: NSURLResponse) {
+        // Recieved a new request, clear out the data object
+        self.data = NSMutableData()
+    }
+    
+    func connection(connection: NSURLConnection!, didReceiveData data: NSData!){
+        self.data.appendData(data)
+    }
+    
+    func connectionDidFinishLoading(connection: NSURLConnection!) {
+        var err: NSError
+        var injuriesFromApi: NSMutableArray = NSJSONSerialization.JSONObjectWithData(self.data, options: NSJSONReadingOptions.MutableContainers, error: nil) as! NSMutableArray
+        self.injuries.removeAll(keepCapacity: false)
+        for inj in injuriesFromApi {
+            var injury = Injury(dict: (inj as! NSDictionary))
+            self.injuries.append(injury)
+        }
+        self.connectionDelegate?.didUpdateInjuries()
+    }
+    
+    func application(application: UIApplication,
+        openURL url: NSURL,
+        sourceApplication: String?,
+        annotation: AnyObject?) -> Bool {
+            return FBSDKApplicationDelegate.sharedInstance().application(
+                application,
+                openURL: url,
+                sourceApplication: sourceApplication,
+                annotation: annotation)
+    }
+    
+    func updateInjuries(timer:NSTimer) {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), { () -> Void in
+            
+            
+            dispatch_async(dispatch_get_main_queue(), { () -> Void in
+                self.getInjuries()
+                
+            })
+        })
+    }
+    
+    func getInjuries(){
+        self.startConnection()
+    }
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         // Override point for customization after application launch.
-        return true
+        self.getInjuries()
+        self.timer = NSTimer.scheduledTimerWithTimeInterval(15.0, target: self, selector: "updateInjuries:", userInfo: nil, repeats: true)
+        println("update")
+        return FBSDKApplicationDelegate.sharedInstance().application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
     func applicationWillResignActive(application: UIApplication) {
@@ -35,10 +99,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(application: UIApplication) {
+        FBSDKAppEvents.activateApp()
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     }
 
     func applicationWillTerminate(application: UIApplication) {
+        self.timer.invalidate()
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
         // Saves changes in the application's managed object context before the application terminates.
         self.saveContext()

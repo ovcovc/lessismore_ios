@@ -9,10 +9,18 @@ import UIKit
 
 class PopoverVC: UITableViewController {
     
+    var position : NormalizedPosition? = nil
+    
     let options = ["Add new injury", "Report abuse", "Dismiss"]
     
     override func viewDidLoad(){
         super.viewDidLoad()
+    }
+    
+    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        if segue.identifier == "addInjury" && self.position != nil {
+            (segue.destinationViewController as! AddInjuryVC).position = self.position
+        }
     }
     
     override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
